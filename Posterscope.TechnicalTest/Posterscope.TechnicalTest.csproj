@@ -44,10 +44,15 @@
   <ItemGroup>
     <Compile Include="Data\BackupCampaignDataStore.cs" />
     <Compile Include="Data\CampaignDataStore.cs" />
+    <Compile Include="Interfaces\IDataStore.cs" />
+    <Compile Include="Interfaces\IUploadServiceFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Services\IPublishingService.cs" />
+    <Compile Include="Interfaces\IUploadService.cs" />
+    <Compile Include="Interfaces\IPublishingService.cs" />
+    <Compile Include="Services\FtpUploadService.cs" />
     <Compile Include="Services\PublishingService.cs" />
-    <Compile Include="Services\FileUploadService.cs" />
+    <Compile Include="Services\AzureUploadService.cs" />
+    <Compile Include="Services\UploadServiceFactory.cs" />
     <Compile Include="Types\Campaign.cs" />
     <Compile Include="Types\CampaignStatus.cs" />
     <Compile Include="Types\PublishPosterRequest.cs" />

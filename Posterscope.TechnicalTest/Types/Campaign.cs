@@ -9,6 +9,5 @@ namespace Posterscope.TechnicalTest.Types
         public CampaignStatus CampaignStatus { get; set; }
         
         public IEnumerable<Screen> Screens { get; set; }
-
     }
 }

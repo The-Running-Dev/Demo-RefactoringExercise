@@ -1,102 +1,68 @@
 ﻿using System;
-using System.Configuration;
-using Posterscope.TechnicalTest.Data;
+using System.Linq;
+
 using Posterscope.TechnicalTest.Types;
+using Posterscope.TechnicalTest.Interfaces;
 
 namespace Posterscope.TechnicalTest.Services
 {
     public class PublishingService : IPublishingService
     {
-        public PublishPosterResult PublishPosterToScreen(PublishPosterRequest publishPosterRequest)
+        /// <summary>
+        /// Creates a new instance of the service with
+        /// dependencies provided by the dependency resolution container
+        /// </summary>
+        /// <param name="dataStore">An implementation of IDataStore</param>
+        /// <param name="uploadServiceFactory">An implementation of IUploadServiceFactory</param>
+        public PublishingService(IDataStore dataStore, IUploadServiceFactory uploadServiceFactory)
         {
-            var dataStoreType = ConfigurationManager.AppSettings["DataStoreType"]; 
+            _dataStore = dataStore;
+            _uploadServiceFactory = uploadServiceFactory;
+        }
 
-            Campaign campaign = null;
-
-            if (dataStoreType == "Backup")
-            {
-                var campaignDataStore = new BackupCampaignDataStore();
-                campaign = campaignDataStore.GetCampaign(publishPosterRequest.CampaignId);
-            }
-            else
-            {
-                var campaignDataStore = new CampaignDataStore();
-                campaign = campaignDataStore.GetCampaign(publishPosterRequest.CampaignId);
-            }
-            
-
+        public PublishPosterResult PublishPosterToScreen(PublishPosterRequest request)
+        {
+            var campaign = _dataStore.GetCampaign(request.CampaignId);
             var result = new PublishPosterResult();
 
-            switch (campaign.CampaignStatus)
+            // If the campaign is not active or has no screens
+            if (campaign.CampaignStatus != CampaignStatus.Active || campaign.Screens == null)
             {
-                case CampaignStatus.Active:
-                    if (campaign.Screens == null)
-                    {
-                        result.Success = false;
-                    }
-                    else
-                    {
-                        var flag = false; 
-                        Screen screenToPublish = null;
-                        foreach (var s in campaign.Screens)
-                        {
-                            if (s.Id == publishPosterRequest.ScreenId)
-                            {
-                                flag = true;
-                                screenToPublish = s;
-                            }
-                                
-                        }
-                        if (flag)
-                        {
-                            var fileUploadService = new FileUploadService();
-                            switch (screenToPublish.PublishType)
-                            {
-                                case PublishTypes.Ftp:
-                                    result.Success = fileUploadService.UploadFileToFTPServer(publishPosterRequest.PosterBytes, publishPosterRequest.ScreenContentPath);
-                                    break;
-                                case PublishTypes.AzureBlobStorage:
-                                    result.Success = fileUploadService.UploadFileToAzureBlobStorage(publishPosterRequest.PosterBytes, publishPosterRequest.ScreenContentPath);
-                                    break;
-                            }
-                        }
-                        else result.Success = false;
-                    }
-                    break;
-
-                case CampaignStatus.Archived:
-                case CampaignStatus.Inactive:
-                    if (campaign.Screens == null)
-                    {
-                        result.Success = false;
-                    }
-                    else result.Success = false;
-                    break;
+                return result;
             }
-            
-            if (result.Success)
+
+            // Get the screen from the campaign
+            var screenToPublish = campaign.Screens.FirstOrDefault(x => x.Id == request.ScreenId);
+
+            // If the requested screen does not belong to the campaign
+            if (screenToPublish == null) return result;
+
+            // Get an instance of the IUploadService from the factory
+            var uploadService = _uploadServiceFactory.GetService(screenToPublish.PublishType);
+
+            // Upload the screen and get the result
+            result.Success = uploadService.Upload(request.PosterBytes, request.ScreenContentPath);
+
+            // If the uploading failed
+            if (!result.Success) return result;
+
+            // Update the publish date for the requested screen
+            campaign.Screens.ToList().ForEach(x =>
             {
-                foreach (var x in campaign.Screens)
+                if (x.Id == request.ScreenId)
                 {
-                    if (x.Id == publishPosterRequest.ScreenId)
-                    {
-                        x.LastPublishDateTime = DateTime.Now;
-                    }
+                    x.LastPublishDateTime = DateTime.Now;
                 }
+            });
 
-                if (dataStoreType == "Backup")
-                {
-                    var campaignDataStore = new BackupCampaignDataStore();
-                    campaignDataStore.UpdateCampaign(campaign);
-                }
-                else
-                {
-                    var campaignDataStore = new CampaignDataStore();
-                    campaignDataStore.UpdateCampaign(campaign);
-                }
-            }
+            // Save the campaign to the data store
+            _dataStore.UpdateCampaign(campaign);
 
             return result;
         }
+
+        private readonly IDataStore _dataStore;
+
+        private readonly IUploadServiceFactory _uploadServiceFactory;
     }
 }

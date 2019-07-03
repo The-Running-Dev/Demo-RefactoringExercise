@@ -1,18 +1,19 @@
 ﻿using Posterscope.TechnicalTest.Types;
+using Posterscope.TechnicalTest.Interfaces;
 
 namespace Posterscope.TechnicalTest.Data
 {
-    public class BackupCampaignDataStore
+    public class BackupCampaignDataStore: IDataStore
     {
-        public Campaign GetCampaign(int campaignId)
+        public Campaign GetCampaign(int id)
         {
-            //access database to retrive account, code removed for brevity
+            // access database to trivet account, code removed for brevity
             return new Campaign();
         }
 
         public void UpdateCampaign(Campaign campaign)
         {
-            //updated campaign in database, code removed for brevity
+            // updated campaign in database, code removed for brevity
         }
     }
 }

@@ -4,5 +4,6 @@
     {
         Ftp,
         AzureBlobStorage,
+        Unknown
     }
 }
